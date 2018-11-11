@@ -51,38 +51,34 @@ class Blockchain:
             print(current_block['previous_hash'])
             print("\n---------\n")
             
-            # provjera da li je trenutni hash jednak registriranom hashu
             if not current_block['hash'] == Blockchain().calculate_hash(current_block['previous_hash'], current_block['timestamp'], current_block['nonce']):
                 print("Current hashes not equal")
                 return False
 
-            # provjera da li je prijasnji hash i registrirani prijasni hash jedanki
             if not last_block['hash'] == current_block['previous_hash']:
                 print("Previous hashes not equal")
                 return False
 
             current_index += 1
 
-        #print("LEGIT CHAIN")
         return True
 
 class Block:
-    DIFFICULTY = 3 # tezina rudarenja, broj prvih nula hash-a
-    NONCE = 1 # unikatni broj koji zadovoljava hash s tezinom (krece od 1)
-    BLOCK_REWARD = 1 # nagrada miner-u
+    DIFFICULTY = 3 # mining difficulty
+    NONCE = 1 # unique number for hash difficulty (starts from 1)
+    BLOCK_REWARD = 1 # miner reward
 
     def __init__(self, previous_hash, transactions):
         self.index = len(blockchain.chain) + 1
         self.previous_hash = previous_hash
         self.timestamp = time()
-        self.transactions = transactions # lista transakcija
+        self.transactions = transactions # list of transactions
         self.hash = self.calculate_hash()
         self.reward = 0
 
     def calculate_hash(self):
         string = (self.previous_hash + str(self.timestamp) + str(self.NONCE)).encode()
-        #string = (self.previous_hash + str(self.timestamp) + self.transactions + str(self.NONCE)).encode()
-        calculated_hash = hashlib.sha256(string).hexdigest() # dva puta sha256 ?
+        calculated_hash = hashlib.sha256(string).hexdigest()
         
         return calculated_hash
 
@@ -202,8 +198,7 @@ def new_wallet():
     return jsonify(response), 200
 
 @app.route('/generate/transaction', methods=['POST'])
-def generate_transaction():
-    # provjeri da li su potrebna polja stigla preko POST-a
+def generate_transaction():    
     values = request.get_json()
     required = ['sender_address', 'sender_private_key', 'recipient_address', 'value']
     if not all(k in values for k in required):
@@ -213,16 +208,12 @@ def generate_transaction():
     sender_private_key = values['sender_private_key']
     recipient_address = values['recipient_address']
     value = values['value']
-    #value = request.json['value']
 
     transaction = Transaction(sender_address, recipient_address, value)
     transaction.submit_transaction(sender_private_key)
-
-    # i dodati u blockchain trenutnu listu transakcija za u blok
     
     blockchain.current_transactions.append(transaction)
     
-    # index iduceg bloka...
     index = int(blockchain.chain[-1]['block_number']) + 1
 
     response = {
@@ -238,15 +229,13 @@ def mine():
     if not blockchain.current_transactions:
         return 'No transactions for block', 400
     
-    #provjeriti ispravnost transakcija
-    
     last_block = blockchain.chain[-1]
     previous_hash = last_block['hash']
     block = Block(previous_hash, blockchain.current_transactions)
-    print('Mining block ...')
-    block.proof_of_work()
-    # dodati nagradu mineru
-    block.reward = Transaction("Reward for mining", MINER_ADDRESS, block.BLOCK_REWARD)
+    
+	print('Mining block ...')
+	block.proof_of_work()
+	block.reward = Transaction("Reward for mining", MINER_ADDRESS, block.BLOCK_REWARD)
     transactions_string = json.dumps([ob.__dict__ for ob in block.transactions])
     
     block_dict = {
@@ -260,7 +249,7 @@ def mine():
     }
 
     blockchain.chain.append(block_dict)
-   # blockchain.current_transactions = []
+   # blockchain.current_transactions = [] 
 
     response = {
         'message': "New Block Forged",
@@ -298,37 +287,37 @@ if __name__ == '__main__':
     print("ALICE ---- PRIVATE KEY: ", alice.private_key)
     print("\n-----------------\n")
 
-    print("Radimo transakciju: ...")
+    print("Making transaction: ...")
     transaction = Transaction(alice.public_key, bob.public_key, 5)
     transaction.submit_transaction(alice.private_key)
-    print("Da li je verificirana ?: ")
     print(transaction.verify_transaction())
     print("\n-----------------\n")
     
-    print("Dodavanje transakcija u blok:")
+    print("Adding random transcation ...:")
     
     for i in range(1,5):
         prev_block = blockchain.chain[i-1]
         prev_hash = prev_block['hash']
         transaction = Transaction(alice.public_key, bob.public_key, 5*i)
         block = Block(prev_hash, transaction)
-        print("Rudarenje bloka {} ... ".format(i))
+        print("Block mining {} ... ".format(i))
         block.hash = block.proof_of_work()
         blockchain.chain.append(block.to_dict())
 
-    print("Da li je lanac validan ...")
+    print("Chain validation...")
     blockchain.check_is_valid()
     print("\n-----------------\n")
 
 
-POSTMAN + FLASK
+POSTMAN + FLASK (TODOs)
 
-> wallet, generiranje kljuceva koristenjem RSA
-> transakcije, slanje vrijednosti s jednog na drugi racun (bez double spending validacije)
-> blokovi za spremanje podataka
-> digitalni potpisi (sha256) za povezivanje blokova u lanac = INTEGRITET
-> proof of work, rudarenje za validaciju blokova
-> provjera da li je lanac validan i ne mijenjan
-> nodes, consesus (?), IMPLEMENTIRATI
-> merkle tree (?), IMPLEMENTIRATI
+> wallet, generating keys with RSA
+> making transactions and sending without double spending validation
+> blocks for saving transactions
+> sha256 for digital proof and adding to chain = INTEGRITY
+> proof of work
+> chain validation
+> nodes, consesus (TODO)
+> merkle tree (TODO)
+> double spending validation (TODO)
 '''
